@@ -6,6 +6,56 @@ import { Address, getAddress, http, isAddress } from "viem";
 import { mainnet } from "viem/chains";
 import { createConfig, useEnsAddress, WagmiProvider } from "wagmi";
 
+// Create a Daimo Pay intent (= checkout, deposit, or other onchain action).
+// The user will be able to complete this intent in a single transfer, any coin, any chain.
+async function createIntent({
+  apiKey,
+  destAddr,
+  chain,
+  token,
+  amount,
+}: {
+  apiKey: string;
+  destAddr: Address;
+  chain: number;
+  token: string;
+  amount: string;
+}) {
+  console.log(`Creating payment intent: ${amount} to ${destAddr}`);
+
+  // Make the API call
+  // Prod:  `https://pay.daimo.com/api/generate`
+  const res = await fetch( `https://pay.stage.daimo.xyz/api/generate`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": "" + Math.random(),
+      "Api-Key": apiKey,
+    },
+    body: JSON.stringify({
+      intent: "Test",
+      items: [
+        {
+          name: "Foo",
+          description: "Bar",
+          image: "https://picsum.photos/200",
+        },
+      ],
+      recipient: {
+        address: destAddr,
+        amount,
+        token,
+        chain,
+      },
+    }),
+  });
+
+  console.log(`Response status`, res.status);
+  const body = await res.json();
+  console.log(`Response`, body);
+
+  return body.url;
+}
+
 export const config = createConfig({
   chains: [mainnet],
   transports: { [mainnet.id]: http() },
@@ -234,39 +284,10 @@ function CreatePaymentIntent({
   const amount = "" + Math.floor(dollars * 1e6); // USDC units
 
   const handleCreateIntent = async () => {
-    // Logic to create payment intent would go here
-    console.log(`Creating payment intent: ${dollars} to ${destAddr}`);
-    // Make the API call
-    const res = await fetch(`https://pay.daimo.com/api/generate`, {
-      method: "POST",
-      headers: {
-        "Idempotency-Key": "" + Math.random(),
-        "Api-Key": apiKey || "",
-      },
-      body: JSON.stringify({
-        intent: "Test",
-        items: [
-          {
-            name: "Foo",
-            description: "Bar",
-            image: "https://picsum.photos/200",
-          },
-        ],
-        recipient: {
-          address: destAddr,
-          amount,
-          token,
-          chain,
-        },
-      }),
-    });
-
-    console.log(`Response status`, res.status);
-    const body = await res.json();
-    console.log(`Response`, body);
-
-    // Call onCreate with the generated link
-    onCreate(body.url);
+    if (apiKey == null) throw new Error('Missing apiKey');
+    if (destAddr == null) throw new Error('Missing destAddr');
+    const link = await createIntent({ apiKey, destAddr, chain, token, amount });
+    onCreate(link);
   };
 
   return (
