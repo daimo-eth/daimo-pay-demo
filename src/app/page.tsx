@@ -24,8 +24,7 @@ async function createIntent({
   console.log(`Creating payment intent: ${amount} to ${destAddr}`);
 
   // Make the API call
-  // Prod:  `https://pay.daimo.com/api/generate`
-  const res = await fetch( `https://pay.stage.daimo.xyz/api/generate`, {
+  const res = await fetch( `https://pay.daimo.com/api/generate`, {
     method: "POST",
     headers: {
       "Idempotency-Key": "" + Math.random(),
