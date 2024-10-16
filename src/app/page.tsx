@@ -1,80 +1,15 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { Address, getAddress, http, isAddress } from "viem";
-import { mainnet } from "viem/chains";
-import { createConfig, useEnsAddress, WagmiProvider } from "wagmi";
-
-// Create a Daimo Pay intent (= checkout, deposit, or other onchain action).
-// The user will be able to complete this intent in a single transfer, any coin, any chain.
-async function createIntent({
-  apiKey,
-  destAddr,
-  chain,
-  token,
-  amount,
-}: {
-  apiKey: string;
-  destAddr: Address;
-  chain: number;
-  token: string;
-  amount: string;
-}) {
-  console.log(`Creating payment intent: ${amount} to ${destAddr}`);
-
-  // Make the API call
-  const res = await fetch( `https://pay.daimo.com/api/generate`, {
-    method: "POST",
-    headers: {
-      "Idempotency-Key": "" + Math.random(),
-      "Api-Key": apiKey,
-    },
-    body: JSON.stringify({
-      intent: "Test",
-      items: [
-        {
-          name: "Foo",
-          description: "Bar",
-          image: "https://picsum.photos/200",
-        },
-      ],
-      recipient: {
-        address: destAddr,
-        amount,
-        token,
-        chain,
-      },
-    }),
-  });
-
-  console.log(`Response status`, res.status);
-  const body = await res.json();
-  console.log(`Response`, body);
-
-  return body.url;
-}
-
-export const config = createConfig({
-  chains: [mainnet],
-  transports: { [mainnet.id]: http() },
-});
-const queryClient = new QueryClient();
+import { Address, getAddress, isAddress } from "viem";
+import { useEnsAddress } from "wagmi";
+import { createPayment, Payment } from "./createPayment";
+import { ConnectKitButton } from "@daimo/pay";
 
 export default function Home() {
-  return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <HomeScreen />
-      </QueryClientProvider>
-    </WagmiProvider>
-  );
-}
-
-function HomeScreen() {
   const [apiKey, setApiKey] = useState("");
-  const [destAddr, setDestAddr] = useState<Address | undefined>();
-  const [link, setLink] = useState<string | undefined>();
+  const [destAddr, setDestAddr] = useState<Address>();
+  const [payment, setPayment] = useState<Payment>();
 
   return (
     <div className="min-h-screen p-8 pb-20 sm:p-20 font-sans">
@@ -92,31 +27,31 @@ function HomeScreen() {
         </p>
 
         <ol className="list-none space-y-8 w-full">
-          <Step num={1} disabled={!!link}>
+          <Step num={1} disabled={payment != null}>
             <EnterApiKey
               apiKey={apiKey}
               setApiKey={setApiKey}
-              disabled={!!link}
+              disabled={payment != null}
             />
           </Step>
-          <Step num={2} disabled={!!link}>
+          <Step num={2} disabled={payment != null}>
             <EnterDestination
               destAddr={destAddr}
               setDestAddr={setDestAddr}
-              disabled={!!link}
+              disabled={payment != null}
             />
           </Step>
-          <Step num={3} disabled={!!link}>
+          <Step num={3} disabled={payment != null}>
             <CreatePaymentIntent
               destAddr={destAddr}
               apiKey={apiKey}
-              onCreate={setLink}
-              disabled={!!link}
+              onCreate={setPayment}
+              disabled={payment != null}
             />
           </Step>
-          {link && (
+          {payment && (
             <Step num={4} checkmark>
-              <IntentCreated link={link} />
+              <PaymentDisplay payment={payment} />
             </Step>
           )}
         </ol>
@@ -125,6 +60,7 @@ function HomeScreen() {
   );
 }
 
+/** A step on the checklist. */
 function Step({
   num,
   children,
@@ -190,13 +126,19 @@ function EnterApiKey({
       <TextLight>
         Don&apos;t have one yet? Use{" "}
         <span className="font-mono select-all">daimopay-demo</span> for testing
-        only.
+        only.{" "}
+        <a
+          className="text-blue-600 hover:underline"
+          target="_blank"
+          href="https://noteforms.com/forms/daimo-pay-early-access-absckg"
+        >
+          Sign up for an API key here.
+        </a>
       </TextLight>
     </div>
   );
 }
 
-// Subcomponents
 function EnterDestination({
   destAddr,
   setDestAddr,
@@ -248,7 +190,7 @@ function EnterDestination({
           />
         </div>
         <div className="w-1/3">
-          <select className="w-full p-2 border rounded" disabled>
+          <select className="w-full p-2 border rounded h-full" disabled>
             <option>USDC on Sepolia</option>
           </select>
         </div>
@@ -270,7 +212,7 @@ function CreatePaymentIntent({
 }: {
   destAddr?: Address;
   apiKey?: string;
-  onCreate: (link: string) => void;
+  onCreate: (payment: Payment) => void;
   disabled?: boolean;
 }) {
   const [dollarInput, setDollarInput] = useState<string>("");
@@ -282,11 +224,17 @@ function CreatePaymentIntent({
   const token = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"; // Sepolia USDC
   const amount = "" + Math.floor(dollars * 1e6); // USDC units
 
-  const handleCreateIntent = async () => {
-    if (apiKey == null) throw new Error('Missing apiKey');
-    if (destAddr == null) throw new Error('Missing destAddr');
-    const link = await createIntent({ apiKey, destAddr, chain, token, amount });
-    onCreate(link);
+  const handleCreatePayment = async () => {
+    if (apiKey == null) throw new Error("Missing apiKey");
+    if (destAddr == null) throw new Error("Missing destAddr");
+    const payment = await createPayment({
+      apiKey,
+      destAddr,
+      chain,
+      token,
+      amount,
+    });
+    onCreate(payment);
   };
 
   return (
@@ -301,8 +249,8 @@ function CreatePaymentIntent({
         disabled={disabled}
       />
       <div className="h-4" />
-      <ButtonPrimary onClick={handleCreateIntent} disabled={isDisabled}>
-        CREATE PAYMENT INTENT
+      <ButtonPrimary onClick={handleCreatePayment} disabled={isDisabled}>
+        CREATE PAYMENT
       </ButtonPrimary>
     </div>
   );
@@ -345,19 +293,27 @@ function Input({
   );
 }
 
-function IntentCreated({ link }: { link: string }) {
+function PaymentDisplay({ payment }: { payment: Payment }) {
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-2">Intent Created</h2>
-      <p className="mt-2">
-        <a
-          href={link}
-          className="text-blue-600 hover:underline"
-          target="_blank"
-        >
-          {link}
-        </a>
-      </p>
+      <h2 className="text-xl font-semibold mb-2">Payment Created</h2>
+      <div className="grid grid-cols-2 gap-8">
+        <div className="mb-2 overflow-hidden">
+          <h3 className="text-lg font-semibold mb-1">External Link Flow</h3>
+          <div className="py-2 overflow-hidden whitespace-nowrap text-ellipsis">
+          <a
+            href={payment.url}
+            className="text-blue-600 hover:underline"
+            target="_blank"
+          >
+            {payment.url}
+          </a></div>
+        </div>
+        <div className="mb-2">
+          <h3 className="text-lg font-semibold mb-1">Embedded Flow</h3>
+          <ConnectKitButton payId={payment.id} theme="soft" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -393,7 +349,7 @@ function TextLight({ children }: { children: React.ReactNode }) {
 function ExternalLinkIcon() {
   return (
     <svg
-      className="inline-block w-4 h-4 ml-1"
+      className="inline-block w-4 h-4 relative top-[-2px]"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
