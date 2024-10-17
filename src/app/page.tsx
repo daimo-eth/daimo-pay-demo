@@ -1,10 +1,10 @@
 "use client";
 
+import { DaimoPayButton } from "@daimo/pay";
 import { useState } from "react";
 import { Address, getAddress, isAddress } from "viem";
 import { useEnsAddress } from "wagmi";
 import { createPayment, Payment } from "./createPayment";
-import { ConnectKitButton } from "@daimo/pay";
 
 export default function Home() {
   const [apiKey, setApiKey] = useState("");
@@ -311,7 +311,7 @@ function PaymentDisplay({ payment }: { payment: Payment }) {
         </div>
         <div className="mb-2">
           <h3 className="text-lg font-semibold mb-1">Embedded Flow</h3>
-          <ConnectKitButton payId={payment.id} theme="soft" />
+          <DaimoPayButton payId={payment.id} theme="soft" />
         </div>
       </div>
     </div>

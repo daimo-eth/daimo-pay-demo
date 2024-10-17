@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@daimo/pay": "^0.0.1",
+    "@daimo/pay": "^0.0.2",
     "@tanstack/react-query": "^5.59.0",
     "next": "14.2.14",
     "react": "^18",
