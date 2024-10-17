@@ -25,7 +25,8 @@ export async function createPayment({
   console.log(`Creating payment: ${amount} to ${destAddr}`);
 
   // Make the API call
-  const res = await fetch(`https://pay.daimo.com/api/generate`, {
+  const apiUrl = process.env.NEXT_PUBLIC_PAY_API_URL || `https://pay.daimo.com/api`;
+  const res = await fetch(`${apiUrl}/generate`, {
     method: "POST",
     headers: {
       "Idempotency-Key": "" + Math.random(),

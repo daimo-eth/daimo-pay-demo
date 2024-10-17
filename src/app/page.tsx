@@ -1,36 +1,52 @@
 "use client";
 
 import { DaimoPayButton } from "@daimo/pay";
+import clsx from "clsx";
 import { useState } from "react";
 import { Address, getAddress, isAddress } from "viem";
 import { createPayment, Payment } from "./createPayment";
-import clsx from "clsx";
 
 // Daimo Pay supports any EVM-compatible chain and coin, both for payers
 // and as a destination for the payment. Bridging and swapping is automatic.
 // Payer sends a plain transfer, destination can be an arbitrary contract call.
-type DestToken = { name: string; chain: number; token: Address };
+type DestToken = { name: string; chain: number; token: Address,decimals:number };
 
 const exampleDestTokens: DestToken[] = [
   {
     name: "USDC on Base",
     chain: 8453,
     token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    decimals: 6
   },
   {
     name: "ETH on Optimism",
     chain: 10,
     token: "0x0000000000000000000000000000000000000000",
+    decimals: 18
   },
   {
     name: "USDC on Linea",
     chain: 59144,
     token: "0x176211869ca2b568f2a7d4ee941e073a821ee1ff",
+    decimals: 6
+  },
+  {
+    name: "USDC on Arbitrum",
+    chain: 42161,
+    token: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    decimals: 6
+  },
+  {
+    name: "WETH on Polygon",
+    chain: 137,
+    token: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
+    decimals: 18
   },
   {
     name: "USDC on Sepolia",
     chain: 11155111,
     token: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+    decimals: 6
   },
 ];
 
@@ -39,6 +55,8 @@ export default function Home() {
   const [destAddr, setDestAddr] = useState<Address>();
   const [destToken, setDestToken] = useState<DestToken>(exampleDestTokens[0]);
   const [payment, setPayment] = useState<Payment>();
+
+  console.log({ apiKey, destAddr, destToken, payment });
 
   return (
     <div className="min-h-screen p-8 pb-20 sm:p-20 font-sans">
@@ -257,13 +275,13 @@ function CreatePaymentIntent({
   onCreate: (payment: Payment) => void;
   disabled?: boolean;
 }) {
-  const [dollarInput, setDollarInput] = useState<string>("");
-  const dollars = Number(dollarInput);
+  const [quantInput, setQuantInput] = useState<string>("");
+  const quant = Number(quantInput);
   const isDisabled =
-    destAddr == null || !(dollars > 0) || apiKey == null || disabled;
+    destAddr == null || !(quant > 0) || apiKey == null || disabled;
 
-  const { chain, token } = destToken;
-  const amount = "" + Math.floor(dollars * 1e6); // USDC units
+  const { chain, token, decimals } = destToken;
+  const amount = "" + BigInt(quant * 10**decimals);
 
   const handleCreatePayment = async () => {
     if (apiKey == null) throw new Error("Missing apiKey");
@@ -283,8 +301,8 @@ function CreatePaymentIntent({
       <h2 className="text-xl font-semibold mb-2">Enter Amount</h2>
       <input
         type="number"
-        value={dollarInput}
-        onChange={(e) => setDollarInput(e.target.value)}
+        value={quantInput}
+        onChange={(e) => setQuantInput(e.target.value)}
         placeholder="1.23"
         className="w-full p-2 border rounded"
         disabled={disabled}
