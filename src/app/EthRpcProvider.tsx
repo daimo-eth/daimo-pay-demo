@@ -8,7 +8,7 @@ import { DaimoPayProvider, getDefaultConfig } from '@daimo/pay';
 
 const config = createConfig(
   getDefaultConfig({
-    appName: 'ConnectKit Next.js demo',
+    appName: 'Daimo Pay Demo',
     walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
   })
 );

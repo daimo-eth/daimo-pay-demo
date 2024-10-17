@@ -3,12 +3,41 @@
 import { DaimoPayButton } from "@daimo/pay";
 import { useState } from "react";
 import { Address, getAddress, isAddress } from "viem";
-import { useEnsAddress } from "wagmi";
 import { createPayment, Payment } from "./createPayment";
+import clsx from "clsx";
+
+// Daimo Pay supports any EVM-compatible chain and coin, both for payers
+// and as a destination for the payment. Bridging and swapping is automatic.
+// Payer sends a plain transfer, destination can be an arbitrary contract call.
+type DestToken = { name: string; chain: number; token: Address };
+
+const exampleDestTokens: DestToken[] = [
+  {
+    name: "USDC on Base",
+    chain: 8453,
+    token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  },
+  {
+    name: "ETH on Optimism",
+    chain: 10,
+    token: "0x0000000000000000000000000000000000000000",
+  },
+  {
+    name: "USDC on Linea",
+    chain: 59144,
+    token: "0x176211869ca2b568f2a7d4ee941e073a821ee1ff",
+  },
+  {
+    name: "USDC on Sepolia",
+    chain: 11155111,
+    token: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+  },
+];
 
 export default function Home() {
   const [apiKey, setApiKey] = useState("");
   const [destAddr, setDestAddr] = useState<Address>();
+  const [destToken, setDestToken] = useState<DestToken>(exampleDestTokens[0]);
   const [payment, setPayment] = useState<Payment>();
 
   return (
@@ -38,12 +67,15 @@ export default function Home() {
             <EnterDestination
               destAddr={destAddr}
               setDestAddr={setDestAddr}
+              destToken={destToken}
+              setDestToken={setDestToken}
               disabled={payment != null}
             />
           </Step>
           <Step num={3} disabled={payment != null}>
             <CreatePaymentIntent
               destAddr={destAddr}
+              destToken={destToken}
               apiKey={apiKey}
               onCreate={setPayment}
               disabled={payment != null}
@@ -142,10 +174,14 @@ function EnterApiKey({
 function EnterDestination({
   destAddr,
   setDestAddr,
+  destToken,
+  setDestToken,
   disabled,
 }: {
   destAddr?: Address;
   setDestAddr: (addr?: Address) => void;
+  destToken: DestToken;
+  setDestToken: (tok: DestToken) => void;
   disabled?: boolean;
 }) {
   const [inputAddress, setInputAddress] = useState<string>(destAddr || "");
@@ -153,16 +189,8 @@ function EnterDestination({
     "pending" | "valid" | "error"
   >("pending");
 
-  const { data: ensAddress } = useEnsAddress({
-    name: inputAddress,
-    query: { enabled: inputAddress.includes(".") },
-  });
-
   const onBlur = () => {
-    if (ensAddress) {
-      setDestAddr(ensAddress);
-      setAddressStatus("valid");
-    } else if (isAddress(inputAddress)) {
+    if (isAddress(inputAddress)) {
       setDestAddr(getAddress(inputAddress));
       setAddressStatus("valid");
     } else if (inputAddress === "") {
@@ -184,14 +212,26 @@ function EnterDestination({
             value={inputAddress}
             onChange={(e) => setInputAddress(e.target.value)}
             onBlur={onBlur}
-            placeholder="vitalik.eth"
+            placeholder="0x..."
             status={addressStatus}
             disabled={disabled}
           />
         </div>
         <div className="w-1/3">
-          <select className="w-full p-2 border rounded h-full" disabled>
-            <option>USDC on Sepolia</option>
+          <select
+            className="w-full p-2 border rounded h-full"
+            value={destToken.name}
+            onChange={(e) =>
+              setDestToken(
+                exampleDestTokens.find((dt) => dt.name === e.target.value)!
+              )
+            }
+          >
+            {exampleDestTokens.map((dt) => (
+              <option key={dt.name} value={dt.name}>
+                {dt.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -206,11 +246,13 @@ function EnterDestination({
 
 function CreatePaymentIntent({
   destAddr,
+  destToken,
   apiKey,
   onCreate,
   disabled,
 }: {
   destAddr?: Address;
+  destToken: DestToken;
   apiKey?: string;
   onCreate: (payment: Payment) => void;
   disabled?: boolean;
@@ -220,8 +262,7 @@ function CreatePaymentIntent({
   const isDisabled =
     destAddr == null || !(dollars > 0) || apiKey == null || disabled;
 
-  const chain = 11155111; // Sepolia
-  const token = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"; // Sepolia USDC
+  const { chain, token } = destToken;
   const amount = "" + Math.floor(dollars * 1e6); // USDC units
 
   const handleCreatePayment = async () => {
@@ -268,9 +309,9 @@ function Input({
     <div className="relative w-full">
       <input
         {...props}
-        className={`w-full p-2 border rounded ${
-          status === "error" ? "border-red-700" : ""
-        }`}
+        className={clsx(`w-full p-2 pr-6 border rounded`, "text-ellipsis", {
+          "border-red-700": status === "error",
+        })}
         disabled={disabled}
       />
       {status === "valid" && (
@@ -301,13 +342,14 @@ function PaymentDisplay({ payment }: { payment: Payment }) {
         <div className="mb-2 overflow-hidden">
           <h3 className="text-lg font-semibold mb-1">External Link Flow</h3>
           <div className="py-2 overflow-hidden whitespace-nowrap text-ellipsis">
-          <a
-            href={payment.url}
-            className="text-blue-600 hover:underline"
-            target="_blank"
-          >
-            {payment.url}
-          </a></div>
+            <a
+              href={payment.url}
+              className="text-blue-600 hover:underline"
+              target="_blank"
+            >
+              {payment.url}
+            </a>
+          </div>
         </div>
         <div className="mb-2">
           <h3 className="text-lg font-semibold mb-1">Embedded Flow</h3>

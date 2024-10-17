@@ -50,6 +50,11 @@ export async function createPayment({
   });
 
   console.log(`Response status`, res.status);
+  if  (res.status < 200 || res.status >=300) {
+    console.log(await res.text());
+    throw new Error(res.statusText);
+  }
+
   const body = await res.json();
   console.log(`Response`, body);
   return body as Payment;
