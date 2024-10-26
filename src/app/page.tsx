@@ -1,6 +1,6 @@
 "use client";
 
-import { DaimoPayButton } from "@daimo/pay";
+import { DaimoPayButton, useDaimoPayStatus } from "@daimo/pay";
 import clsx from "clsx";
 import { useState } from "react";
 import { Address, getAddress, isAddress } from "viem";
@@ -9,44 +9,49 @@ import { createPayment, Payment } from "./createPayment";
 // Daimo Pay supports any EVM-compatible chain and coin, both for payers
 // and as a destination for the payment. Bridging and swapping is automatic.
 // Payer sends a plain transfer, destination can be an arbitrary contract call.
-type DestToken = { name: string; chain: number; token: Address,decimals:number };
+type DestToken = {
+  name: string;
+  chain: number;
+  token: Address;
+  decimals: number;
+};
 
 const exampleDestTokens: DestToken[] = [
   {
     name: "USDC on Base",
     chain: 8453,
     token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-    decimals: 6
+    decimals: 6,
   },
   {
     name: "ETH on Optimism",
     chain: 10,
     token: "0x0000000000000000000000000000000000000000",
-    decimals: 18
+    decimals: 18,
   },
   {
     name: "USDC on Linea",
     chain: 59144,
     token: "0x176211869ca2b568f2a7d4ee941e073a821ee1ff",
-    decimals: 6
+    decimals: 6,
   },
   {
     name: "USDC on Arbitrum",
     chain: 42161,
     token: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-    decimals: 6
+    decimals: 6,
   },
   {
     name: "WETH on Polygon",
     chain: 137,
     token: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
-    decimals: 18
+    decimals: 18,
   },
   {
     name: "USDC on Sepolia",
     chain: 11155111,
     token: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-    decimals: 6
+    decimals: 6,
   },
 ];
 
@@ -281,7 +286,7 @@ function CreatePaymentIntent({
     destAddr == null || !(quant > 0) || apiKey == null || disabled;
 
   const { chain, token, decimals } = destToken;
-  const amount = "" + BigInt(quant * 10**decimals);
+  const amount = "" + BigInt(quant * 10 ** decimals);
 
   const handleCreatePayment = async () => {
     if (apiKey == null) throw new Error("Missing apiKey");
@@ -353,25 +358,40 @@ function Input({
 }
 
 function PaymentDisplay({ payment }: { payment: Payment }) {
+  const { status } = useDaimoPayStatus() || { status: "" };
+  const disabled = ["payment_completed", "payment_bounced"].includes(status);
+  const verb =
+    status === "payment_completed"
+      ? "PAID"
+      : status === "payment_bounced"
+      ? "BOUNCED"
+      : "PAY";
+
   return (
     <div>
       <h2 className="text-xl font-semibold mb-2">Payment Created</h2>
       <div className="grid grid-cols-2 gap-8">
         <div className="mb-2 overflow-hidden">
           <h3 className="text-lg font-semibold mb-1">External Link Flow</h3>
-          <div className="py-2 overflow-hidden whitespace-nowrap text-ellipsis">
             <a
               href={payment.url}
-              className="text-blue-600 hover:underline"
+              className="block text-blue-600 hover:underline py-[10px] overflow-hidden whitespace-nowrap text-ellipsis bg-slate-200 rounded-md px-4"
               target="_blank"
             >
               {payment.url}
             </a>
-          </div>
         </div>
         <div className="mb-2">
           <h3 className="text-lg font-semibold mb-1">Embedded Flow</h3>
-          <DaimoPayButton payId={payment.id} theme="soft" />
+          <DaimoPayButton.Custom payId={payment.id} closeOnSuccess>
+            {({ show }) =>
+              show && (
+                <ButtonPrimary disabled={disabled} onClick={show}>
+                  {verb}
+                </ButtonPrimary>
+              )
+            }
+          </DaimoPayButton.Custom>
         </div>
       </div>
     </div>
