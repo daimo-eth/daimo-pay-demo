@@ -25,7 +25,8 @@ export async function createPayment({
   console.log(`Creating payment: ${amount} to ${destAddr}`);
 
   // Make the API call
-  const apiUrl = process.env.NEXT_PUBLIC_PAY_API_URL || `https://pay.daimo.com/api`;
+  const apiUrl =
+    process.env.NEXT_PUBLIC_PAY_API_URL || `https://pay.daimo.com/api`;
   const res = await fetch(`${apiUrl}/generate`, {
     method: "POST",
     headers: {
@@ -51,7 +52,7 @@ export async function createPayment({
   });
 
   console.log(`Response status`, res.status);
-  if  (res.status < 200 || res.status >=300) {
+  if (res.status < 200 || res.status >= 300) {
     console.log(await res.text());
     throw new Error(res.statusText);
   }
