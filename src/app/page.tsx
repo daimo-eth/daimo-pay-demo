@@ -56,9 +56,10 @@ const exampleDestTokens: DestToken[] = [
 ];
 
 export default function Home() {
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState("daimopay-demo");
   const [destAddr, setDestAddr] = useState<Address>();
   const [destToken, setDestToken] = useState<DestToken>(exampleDestTokens[0]);
+  const [amountUsdInput, setAmountUsdInput] = useState<string>("20.00");
   const [payment, setPayment] = useState<Payment>();
 
   console.log({ apiKey, destAddr, destToken, payment });
@@ -97,9 +98,13 @@ export default function Home() {
           </Step>
           <Step num={3} disabled={payment != null}>
             <CreatePaymentIntent
-              destAddr={destAddr}
-              destToken={destToken}
-              apiKey={apiKey}
+              {...{
+                destAddr,
+                destToken,
+                apiKey,
+                amountUsdInput,
+                setAmountUsdInput,
+              }}
               onCreate={setPayment}
               disabled={payment != null}
             />
@@ -268,20 +273,23 @@ function EnterDestination({
 }
 
 function CreatePaymentIntent({
+  amountUsdInput,
+  setAmountUsdInput,
   destAddr,
   destToken,
   apiKey,
   onCreate,
   disabled,
 }: {
+  amountUsdInput: string;
+  setAmountUsdInput: (val: string) => void;
   destAddr?: Address;
   destToken: DestToken;
   apiKey?: string;
   onCreate: (payment: Payment) => void;
   disabled?: boolean;
 }) {
-  const [quantInput, setQuantInput] = useState<string>("");
-  const quant = Number(quantInput);
+  const quant = Number(amountUsdInput);
   const isDisabled =
     destAddr == null || !(quant > 0) || apiKey == null || disabled;
 
@@ -306,8 +314,8 @@ function CreatePaymentIntent({
       <h2 className="text-xl font-semibold mb-2">Enter Amount</h2>
       <input
         type="number"
-        value={quantInput}
-        onChange={(e) => setQuantInput(e.target.value)}
+        value={amountUsdInput}
+        onChange={(e) => setAmountUsdInput(e.target.value)}
         placeholder="1.23"
         className="w-full p-2 border rounded"
         disabled={disabled}
@@ -373,13 +381,13 @@ function PaymentDisplay({ payment }: { payment: Payment }) {
       <div className="grid grid-cols-2 gap-8">
         <div className="mb-2 overflow-hidden">
           <h3 className="text-lg font-semibold mb-1">External Link Flow</h3>
-            <a
-              href={payment.url}
-              className="block text-blue-600 hover:underline py-[10px] overflow-hidden whitespace-nowrap text-ellipsis bg-slate-200 rounded-md px-4"
-              target="_blank"
-            >
-              {payment.url}
-            </a>
+          <a
+            href={payment.url}
+            className="block text-blue-600 hover:underline py-[10px] overflow-hidden whitespace-nowrap text-ellipsis bg-slate-200 rounded-md px-4"
+            target="_blank"
+          >
+            {payment.url}
+          </a>
         </div>
         <div className="mb-2">
           <h3 className="text-lg font-semibold mb-1">Embedded Flow</h3>
