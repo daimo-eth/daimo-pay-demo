@@ -69,13 +69,13 @@ export default function Home() {
       <main className="flex flex-col gap-6 items-center sm:items-start text-gray-900 w-full max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-2">Daimo Pay Demo</h1>
         <p className="mb-4">
-          This is a demo app showing how to integrate Daimo Pay. For details{" "}
+          This is a demo app showing how to integrate Daimo Pay.{" "}
           <a
-            href="https://paydocs.daimo.com"
+            href="https://github.com/daimo-eth/daimo-pay-demo"
             className="text-blue-600 hover:underline"
             target="_blank"
           >
-            see our docs <ExternalLinkIcon />
+            View source on Github <ExternalLinkIcon />
           </a>
         </p>
 

@@ -1,14 +1,16 @@
+**This sample app demonstrates how to integrate Daimo Pay.**
+
+For details, [see our docs](https://paydocs.daimo.com).
+
+We're using the Daimo Pay SDK: [@daimo/pay](https://www.npmjs.com/package/@daimo/pay)
+
+
 ## Quick start
 
 ```
 npm i
 npm run dev
 ```
-
-This is a demo app showing how to integrate Daimo Pay. 
-* See `page.tsx`
-* For details, [see our docs](https://paydocs.daimo.com).
-
 
 ## Screenshot
 
